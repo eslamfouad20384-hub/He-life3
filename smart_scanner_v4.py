@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 st.set_page_config(layout="wide")
-st.title("🚀 Ultra Smart Analyzer PRO (Full Score Visibility)")
+st.title("🚀 Ultra Smart Analyzer PRO (1000 Candles + Full Status)")
 
 session = requests.Session()
 
@@ -94,7 +94,7 @@ def add_indicators(df):
 
 
 # =========================
-# 🧠 ANALYSIS (FULL SCORE BREAKDOWN)
+# 🧠 ANALYSIS
 # =========================
 def analyze(df):
 
@@ -103,56 +103,48 @@ def analyze(df):
     score = 0
     reasons = []
 
-    # RSI
     if latest["rsi"] < 35:
         score += 15
         reasons.append(f"RSI ({latest['rsi']:.2f}) → تشبع بيعي +15")
     else:
         reasons.append(f"RSI ({latest['rsi']:.2f}) → لا إشارة (0)")
 
-    # MACD
     if latest["macd"] > latest["signal"]:
         score += 15
         reasons.append("MACD إيجابي +15")
     else:
         reasons.append("MACD سلبي (0)")
 
-    # Trend
     if latest["ema50"] > latest["ema200"]:
         score += 15
         reasons.append("ترند صاعد +15")
     else:
         reasons.append("ترند ضعيف (0)")
 
-    # Support
     if latest["close"] <= latest["support"] * 1.02:
         score += 10
         reasons.append("قريب من الدعم +10")
     else:
         reasons.append("بعيد عن الدعم (0)")
 
-    # Volume
     if latest["volume"] > latest["vol_ma"]:
         score += 10
         reasons.append("حجم قوي +10")
     else:
         reasons.append("حجم ضعيف (0)")
 
-    # ATR
     if latest["atr"] > df["atr"].mean():
         score += 10
         reasons.append("حركة قوية ATR +10")
     else:
         reasons.append("حركة ضعيفة ATR (0)")
 
-    # Momentum
     if latest["close"] > df["close"].iloc[-5:].mean():
         score += 10
         reasons.append("زخم صاعد +10")
     else:
         reasons.append("زخم ضعيف (0)")
 
-    # Trend Strength
     if df["close"].iloc[-10:].mean() > df["close"].iloc[-30:-10].mean():
         score += 5
         reasons.append("اتجاه صاعد +5")
@@ -227,6 +219,24 @@ if st.button("🚀 Analyze") and coin:
     }]))
 
     # =========================
+    # 📡 DATA STATUS (رجع زي الأول)
+    # =========================
+    st.subheader("📡 Data Status")
+
+    candles_count = len(df)
+    completion = (candles_count / 1000) * 100
+
+    st.write(f"📊 عدد الشموع: {candles_count}")
+    st.write(f"📈 نسبة الاكتمال: {completion:.1f}%")
+
+    if candles_count >= 950:
+        st.success("🔥 البيانات كاملة")
+    elif candles_count >= 700:
+        st.warning("⚠️ البيانات ناقصة جزئياً")
+    else:
+        st.error("❌ البيانات ضعيفة أو غير مكتملة")
+
+    # =========================
     # 🎯 TRADE PLAN
     # =========================
     st.subheader("🎯 Trade Plan")
@@ -241,8 +251,8 @@ if st.button("🚀 Analyze") and coin:
     }]))
 
     # =========================
-    # 🧠 SCORE BREAKDOWN
+    # 🧠 REASONS
     # =========================
-    st.subheader("🧠 Why this score? (Full Breakdown)")
+    st.subheader("🧠 Why this score?")
     for r in reasons:
         st.write("•", r)
