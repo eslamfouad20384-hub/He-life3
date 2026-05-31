@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 st.set_page_config(layout="wide")
-st.title("🚀 Ultra Smart Analyzer PRO (1000 Candles + Data Quality + Strength)")
+st.title("🚀 Ultra Smart Analyzer PRO (Full Score Visibility)")
 
 session = requests.Session()
 
@@ -94,83 +94,7 @@ def add_indicators(df):
 
 
 # =========================
-# 📡 DATA QUALITY (هل الداتا سليمة)
-# =========================
-def data_quality(df):
-
-    score = 0
-    reasons = []
-
-    if len(df) >= 950:
-        score += 25
-        reasons.append(f"عدد شموع ممتاز ({len(df)})")
-    else:
-        reasons.append(f"شموع ناقصة ({len(df)})")
-
-    if df.isnull().sum().sum() == 0:
-        score += 25
-        reasons.append("لا توجد قيم ناقصة")
-    else:
-        reasons.append("يوجد قيم ناقصة")
-
-    if df["time"].duplicated().sum() == 0:
-        score += 20
-        reasons.append("لا يوجد تكرار بيانات")
-    else:
-        reasons.append("يوجد تكرار بيانات")
-
-    diffs = df["time"].diff().dropna()
-    if len(diffs) > 0 and (diffs == diffs.mode()[0]).mean() > 0.90:
-        score += 20
-        reasons.append("توقيت الشموع منتظم")
-    else:
-        reasons.append("توقيت غير منتظم")
-
-    if df["volume"].min() > 0:
-        score += 10
-        reasons.append("حجم تداول طبيعي")
-    else:
-        reasons.append("يوجد شموع بدون حجم")
-
-    if score >= 85:
-        label = "🔥 بيانات موثوقة جدًا"
-    elif score >= 70:
-        label = "🟢 بيانات جيدة"
-    elif score >= 50:
-        label = "⚠️ بيانات متوسطة"
-    else:
-        label = "❌ بيانات ضعيفة"
-
-    return score, label, reasons
-
-
-# =========================
-# 📡 DATA STRENGTH (نشاط السوق)
-# =========================
-def data_strength(df):
-
-    candles_score = min(len(df) / 1000 * 100, 100)
-
-    vol_score = min((df["volume"].mean() / (df["volume"].std() + 1e-9)) * 10, 100)
-
-    atr_score = min((df["atr"].mean() / df["close"].mean()) * 500, 100)
-
-    strength = (candles_score + vol_score + atr_score) / 3
-
-    if strength > 75:
-        label = "🔥 سوق نشط قوي"
-    elif strength > 55:
-        label = "🟢 سوق طبيعي"
-    elif strength > 35:
-        label = "⚠️ سوق ضعيف"
-    else:
-        label = "❌ سوق ميت"
-
-    return strength, label
-
-
-# =========================
-# 🧠 ANALYSIS
+# 🧠 ANALYSIS (FULL SCORE BREAKDOWN)
 # =========================
 def analyze(df):
 
@@ -179,37 +103,61 @@ def analyze(df):
     score = 0
     reasons = []
 
+    # RSI
     if latest["rsi"] < 35:
         score += 15
-        reasons.append(f"RSI منخفض ({latest['rsi']:.2f})")
+        reasons.append(f"RSI ({latest['rsi']:.2f}) → تشبع بيعي +15")
+    else:
+        reasons.append(f"RSI ({latest['rsi']:.2f}) → لا إشارة (0)")
 
+    # MACD
     if latest["macd"] > latest["signal"]:
         score += 15
-        reasons.append("MACD إيجابي")
+        reasons.append("MACD إيجابي +15")
+    else:
+        reasons.append("MACD سلبي (0)")
 
+    # Trend
     if latest["ema50"] > latest["ema200"]:
         score += 15
-        reasons.append("ترند صاعد")
+        reasons.append("ترند صاعد +15")
+    else:
+        reasons.append("ترند ضعيف (0)")
 
+    # Support
     if latest["close"] <= latest["support"] * 1.02:
         score += 10
-        reasons.append("قريب من الدعم")
+        reasons.append("قريب من الدعم +10")
+    else:
+        reasons.append("بعيد عن الدعم (0)")
 
+    # Volume
     if latest["volume"] > latest["vol_ma"]:
         score += 10
-        reasons.append("حجم قوي")
+        reasons.append("حجم قوي +10")
+    else:
+        reasons.append("حجم ضعيف (0)")
 
+    # ATR
     if latest["atr"] > df["atr"].mean():
         score += 10
-        reasons.append("حركة قوية ATR")
+        reasons.append("حركة قوية ATR +10")
+    else:
+        reasons.append("حركة ضعيفة ATR (0)")
 
+    # Momentum
     if latest["close"] > df["close"].iloc[-5:].mean():
         score += 10
-        reasons.append("زخم صاعد")
+        reasons.append("زخم صاعد +10")
+    else:
+        reasons.append("زخم ضعيف (0)")
 
+    # Trend Strength
     if df["close"].iloc[-10:].mean() > df["close"].iloc[-30:-10].mean():
         score += 5
-        reasons.append("اتجاه صاعد")
+        reasons.append("اتجاه صاعد +5")
+    else:
+        reasons.append("اتجاه ضعيف (0)")
 
     signal = (
         "🔥 قوي جدًا" if score >= 80 else
@@ -257,9 +205,6 @@ if st.button("🚀 Analyze") and coin:
 
     df = add_indicators(df)
 
-    dq_score, dq_label, dq_reasons = data_quality(df)
-    ds_score, ds_label = data_strength(df)
-
     score, signal, reasons = analyze(df)
     entry, sl, tp1, tp2, tp3 = risk_management(df)
 
@@ -282,21 +227,6 @@ if st.button("🚀 Analyze") and coin:
     }]))
 
     # =========================
-    # 📡 DATA QUALITY
-    # =========================
-    st.subheader("📡 Data Quality")
-    st.metric("جودة البيانات", f"{dq_score}/100", dq_label)
-
-    for r in dq_reasons:
-        st.write("•", r)
-
-    # =========================
-    # 📡 DATA STRENGTH
-    # =========================
-    st.subheader("📊 Market Strength")
-    st.metric("قوة السوق", f"{ds_score:.1f}/100", ds_label)
-
-    # =========================
     # 🎯 TRADE PLAN
     # =========================
     st.subheader("🎯 Trade Plan")
@@ -311,8 +241,8 @@ if st.button("🚀 Analyze") and coin:
     }]))
 
     # =========================
-    # 🧠 REASONS
+    # 🧠 SCORE BREAKDOWN
     # =========================
-    st.subheader("🧠 Why this score?")
+    st.subheader("🧠 Why this score? (Full Breakdown)")
     for r in reasons:
         st.write("•", r)
