@@ -4,12 +4,12 @@ import pandas as pd
 import numpy as np
 
 st.set_page_config(layout="wide")
-st.title("🚀 Ultra Smart Analyzer PRO (1000 Candles + Full Status)")
+st.title("🚀 Ultra Smart Analyzer PRO (FULL SYSTEM + BATCH DATA)")
 
 session = requests.Session()
 
 # =========================
-# 📊 GET DATA (1000 CANDLES)
+# 📊 BATCH DATA LOADER (1000 CANDLES)
 # =========================
 @st.cache_data(ttl=120)
 def get_data(symbol, target_candles=1000, granularity=3600):
@@ -48,9 +48,6 @@ def get_data(symbol, target_candles=1000, granularity=3600):
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
         df = df.dropna()
-
-        if len(df) < 200:
-            return None
 
         return df.tail(target_candles)
 
@@ -94,7 +91,7 @@ def add_indicators(df):
 
 
 # =========================
-# 🧠 ANALYSIS
+# 🧠 ANALYSIS (FULL BREAKDOWN)
 # =========================
 def analyze(df):
 
@@ -103,48 +100,56 @@ def analyze(df):
     score = 0
     reasons = []
 
+    # RSI
     if latest["rsi"] < 35:
         score += 15
         reasons.append(f"RSI ({latest['rsi']:.2f}) → تشبع بيعي +15")
     else:
         reasons.append(f"RSI ({latest['rsi']:.2f}) → لا إشارة (0)")
 
+    # MACD
     if latest["macd"] > latest["signal"]:
         score += 15
         reasons.append("MACD إيجابي +15")
     else:
         reasons.append("MACD سلبي (0)")
 
+    # EMA Trend
     if latest["ema50"] > latest["ema200"]:
         score += 15
         reasons.append("ترند صاعد +15")
     else:
         reasons.append("ترند ضعيف (0)")
 
+    # Support
     if latest["close"] <= latest["support"] * 1.02:
         score += 10
         reasons.append("قريب من الدعم +10")
     else:
         reasons.append("بعيد عن الدعم (0)")
 
+    # Volume
     if latest["volume"] > latest["vol_ma"]:
         score += 10
         reasons.append("حجم قوي +10")
     else:
         reasons.append("حجم ضعيف (0)")
 
+    # ATR
     if latest["atr"] > df["atr"].mean():
         score += 10
         reasons.append("حركة قوية ATR +10")
     else:
         reasons.append("حركة ضعيفة ATR (0)")
 
+    # Momentum
     if latest["close"] > df["close"].iloc[-5:].mean():
         score += 10
         reasons.append("زخم صاعد +10")
     else:
         reasons.append("زخم ضعيف (0)")
 
+    # Trend Strength
     if df["close"].iloc[-10:].mean() > df["close"].iloc[-30:-10].mean():
         score += 5
         reasons.append("اتجاه صاعد +5")
@@ -191,7 +196,7 @@ if st.button("🚀 Analyze") and coin:
 
     df = get_data(coin.upper(), 1000)
 
-    if df is None:
+    if df is None or df.empty:
         st.error("❌ مفيش بيانات كفاية")
         st.stop()
 
@@ -203,38 +208,17 @@ if st.button("🚀 Analyze") and coin:
     latest = df.iloc[-1]
 
     # =========================
-    # 📊 MARKET DATA
+    # 📊 FULL MARKET DATA
     # =========================
-    st.subheader("📊 Market Data")
-    st.dataframe(pd.DataFrame([{
-        "Price": latest["close"],
-        "RSI": latest["rsi"],
-        "MACD": latest["macd"],
-        "EMA50": latest["ema50"],
-        "EMA200": latest["ema200"],
-        "ATR": latest["atr"],
-        "Volume": latest["volume"],
-        "Support": latest["support"],
-        "Resistance": latest["resistance"],
-    }]))
+    st.subheader("📊 Market Data (Full)")
+    st.dataframe(pd.DataFrame([latest]))
 
     # =========================
-    # 📡 DATA STATUS (رجع زي الأول)
+    # 📡 DATA INFO
     # =========================
-    st.subheader("📡 Data Status")
-
-    candles_count = len(df)
-    completion = (candles_count / 1000) * 100
-
-    st.write(f"📊 عدد الشموع: {candles_count}")
-    st.write(f"📈 نسبة الاكتمال: {completion:.1f}%")
-
-    if candles_count >= 950:
-        st.success("🔥 البيانات كاملة")
-    elif candles_count >= 700:
-        st.warning("⚠️ البيانات ناقصة جزئياً")
-    else:
-        st.error("❌ البيانات ضعيفة أو غير مكتملة")
+    st.subheader("📡 Data Info")
+    st.write(f"📊 عدد الشموع: {len(df)}")
+    st.write("🔁 طريقة السحب: Batch Loading (300 candles per request)")
 
     # =========================
     # 🎯 TRADE PLAN
